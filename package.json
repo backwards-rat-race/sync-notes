@@ -1,0 +1,20 @@
+{
+  "name": "sync-notes-ui",
+  "version": "1.0.0",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "parcel --no-cache --host 0.0.0.0 src/index.html",
+    "build": "parcel build --no-cache --no-source-maps src/index.html"
+  },
+  "dependencies": {
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "rich-markdown-editor": "^11.21.3",
+    "styled-components": "^5.3.3",
+    "wretch": "^1.7.7"
+  },
+  "devDependencies": {
+    "parcel": "^2.0.1"
+  }
+}
