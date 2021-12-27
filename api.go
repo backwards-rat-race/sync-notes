@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/google/uuid"
 	"log"
 	"net/http"
@@ -12,14 +13,35 @@ import (
 	"time"
 )
 
+var storage = DiskStorage{"data"}
+const storageAliveTime = 672 * time.Hour  // 28 days
+
 var requestsCache = make(map[uuid.UUID]time.Time)
 const requestCacheTimeout = 1 * time.Hour
 
 func init() {
-	ticker := time.NewTicker(5 * time.Second)
+	err := storage.Init()
+	if err != nil {
+		panic(err)
+	}
+
+	// GC before we get going to clean things up
+	storage.Gc(time.Now(), storageAliveTime)
+
+	// Now set a timer to run the GC at a regular interval
+	storageTicker := time.NewTicker(5 * time.Minute)
 	go func() {
 		for {
-			<-ticker.C
+			<-storageTicker.C
+			storage.Gc(time.Now(), storageAliveTime)
+		}
+	}()
+
+
+	cacheTicker := time.NewTicker(5 * time.Minute)
+	go func() {
+		for {
+			<-cacheTicker.C
 			now := time.Now()
 			for request, createTime := range requestsCache {
 				if createTime.Add(requestCacheTimeout).Before(now) {
@@ -32,14 +54,20 @@ func init() {
 }
 
 func main() {
-	storage := DiskStorage{"data"}
-	err := storage.Init()
-	if err != nil {
-		panic(err)
-	}
+
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+
+	// Basic CORS
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"https://*", "http://*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
 
 	// All responses are in JSON format
 	r.Use(func(next http.Handler) http.Handler {
@@ -198,4 +226,35 @@ func (d DiskStorage) GetNote(id uuid.UUID) (Note, bool) {
 	}
 
 	return Note{Id: id, Data: string(data)}, true
+}
+
+func (d DiskStorage) Gc(now time.Time, expiry time.Duration) {
+	entries, err := os.ReadDir(d.Directory)
+	if err != nil {
+		log.Panicf("Error reading directory: %v", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			log.Printf("Error reading file %s: %v", entry.Name(), err)
+			continue
+		}
+		atime := accessTime(info)
+
+		if atime.Add(expiry).After(now) {
+			continue
+		}
+
+		log.Printf("Expiring file: %s", entry.Name())
+		err = os.Remove(path.Join(d.Directory, entry.Name()))
+		if err != nil {
+			log.Printf("Error removing file %s: %v", entry.Name(), err)
+			continue
+		}
+	}
 }
