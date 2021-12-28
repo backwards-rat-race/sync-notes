@@ -7,7 +7,7 @@ export function App() {
     const [note, setNote] = useState();
 
     useEffect(async () => {
-        const { id } = await wretch('http://localhost:3000/v1/create-note-request').post().json();
+        const { id } = await wretch('http://localhost:3000/api/v1/create-note-request').post().json();
         setNote({ id })
     }, []);
 
@@ -39,14 +39,14 @@ export function App() {
 async function save(editorRef, note) {
     const value = editorRef.current.value();
     if (note.data === undefined) {
-        return await wretch('http://localhost:3000/v1/note')
+        return await wretch('http://localhost:3000/api/v1/note')
             .post({
                 id: note.id,
                 data: value
             })
             .json();
     } else {
-        return await wretch(`http://localhost:3000/v1/note/${note.id}`)
+        return await wretch(`http://localhost:3000/api/v1/note/${note.id}`)
             .put({
                 id: note.id,
                 data: value

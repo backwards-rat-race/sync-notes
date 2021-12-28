@@ -14,9 +14,11 @@ import (
 )
 
 var storage = DiskStorage{"data"}
-const storageAliveTime = 672 * time.Hour  // 28 days
+
+const storageAliveTime = 672 * time.Hour // 28 days
 
 var requestsCache = make(map[uuid.UUID]time.Time)
+
 const requestCacheTimeout = 1 * time.Hour
 
 func init() {
@@ -37,7 +39,6 @@ func init() {
 		}
 	}()
 
-
 	cacheTicker := time.NewTicker(5 * time.Minute)
 	go func() {
 		for {
@@ -55,7 +56,6 @@ func init() {
 
 func main() {
 
-
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
@@ -69,19 +69,15 @@ func main() {
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 
-	// All responses are in JSON format
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			next.ServeHTTP(w, r)
-		})
-	})
+	fs := http.FileServer(http.Dir("static"))
+	r.Handle("/*", fs)
 
-	r.Post("/v1/create-note-request", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/api/v1/create-note-request", func(w http.ResponseWriter, r *http.Request) {
 		c := CreateNoteRequest{Id: uuid.New()}
 		requestsCache[c.Id] = time.Now()
 
 		w.WriteHeader(http.StatusCreated)
+		w.Header().Set("Content-Type", "application/json")
 		e := json.NewEncoder(w)
 		err := e.Encode(c)
 
@@ -92,7 +88,7 @@ func main() {
 		}
 	})
 
-	r.Post("/v1/note", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/api/v1/note", func(w http.ResponseWriter, r *http.Request) {
 		d := json.NewDecoder(r.Body)
 		var note Note
 		err := d.Decode(&note)
@@ -116,6 +112,7 @@ func main() {
 		delete(requestsCache, note.Id)
 
 		w.WriteHeader(http.StatusCreated)
+		w.Header().Set("Content-Type", "application/json")
 		e := json.NewEncoder(w)
 		err = e.Encode(note)
 		if err != nil {
@@ -124,7 +121,7 @@ func main() {
 			return
 		}
 	})
-	r.Get("/v1/note/{id}", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/api/v1/note/{id}", func(w http.ResponseWriter, r *http.Request) {
 		urlId := chi.URLParam(r, "id")
 		id, err := uuid.Parse(urlId)
 		if err != nil {
@@ -139,6 +136,7 @@ func main() {
 		}
 
 		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
 		e := json.NewEncoder(w)
 		err = e.Encode(note)
 		if err != nil {
@@ -147,7 +145,7 @@ func main() {
 			return
 		}
 	})
-	r.Put("/v1/note/{id}", func(w http.ResponseWriter, r *http.Request) {
+	r.Put("/api/v1/note/{id}", func(w http.ResponseWriter, r *http.Request) {
 		urlId := chi.URLParam(r, "id")
 		id, err := uuid.Parse(urlId)
 		if err != nil {
@@ -176,6 +174,7 @@ func main() {
 		}
 
 		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
 		e := json.NewEncoder(w)
 		err = e.Encode(note)
 		if err != nil {
