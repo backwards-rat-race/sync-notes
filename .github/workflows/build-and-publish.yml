@@ -32,11 +32,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PAT }}
       
-      - name: Build image and push to Docker Hub and GitHub Container Registry
+      - name: Build image and push to GitHub Container Registry
         uses: docker/build-push-action@v2
         with:
           # relative path to the place where source code with Dockerfile is located
           context: ./
+          # Push to latest
+          tags: ghcr.io/backwards-rat-race/sync-notes:latest
           # build on feature branches, push only on actions branch
           push: ${{ github.ref == 'refs/heads/actions' }}
 
