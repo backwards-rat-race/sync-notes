@@ -3,7 +3,7 @@ name: Build and Publish
 on:
   # run it on push to the default repository branch
   push:
-    branches: [actions]
+    branches: [master]
   # run it during pull request
   pull_request:
 
@@ -40,7 +40,7 @@ jobs:
           # Push to latest
           tags: ghcr.io/backwards-rat-race/sync-notes:latest
           # build on feature branches, push only on actions branch
-          push: ${{ github.ref == 'refs/heads/actions' }}
+          push: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
