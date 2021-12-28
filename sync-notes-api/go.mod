@@ -1,4 +1,4 @@
-module sync-note-api
+module sync-notes-api
 
 go 1.17
 
